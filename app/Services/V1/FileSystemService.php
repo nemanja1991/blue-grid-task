@@ -2,13 +2,16 @@
 
 namespace App\Http\Services;
 
+use App\Repositories\FileSystemRepository;
 use Illuminate\Support\Facades\Http;
 
 class FileSystemService
 {
-    public function getFileSystem()
+    public function __construct( protected FileSystemRepository $fileSystemRepository) {}
+
+    public function getFileSystemData()
     {
-        $response = Http::get('https://rest-test-eight.vercel.app/api/test');
+        
     }
 
     public function getDirectories()
