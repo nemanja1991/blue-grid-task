@@ -8,4 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class File extends Model
 {
     use HasFactory;
+
+    protected $fillable = [];
+
+    public function directories()
+    {
+        return $this->belongsTo(Directory::class);
+    }
 }
