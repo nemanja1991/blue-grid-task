@@ -9,9 +9,9 @@ class FileSystemController extends Controller
 {
     public function __construct(protected FileSystemService $fileSystem) {}
 
-    public function index()
+    public function getApiData()
     {
-        $fileSystem = $this->fileSystem->getFileSystem();
+        $fileSystem = $this->fileSystem->getFileSystemData();
     }
 
     public function getDirectories()
