@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\V1\FilesDirectoryController;
+use App\Http\Controllers\V1\FileSystemController;
 
-Route::get('files-and-directories', [FilesDirectoryController::class, "index"]);
-Route::get('directories', [FilesDirectoryController::class, "getDirectories"]);
-Route::get('files', [FilesDirectoryController::class, "getFiles"]);
+Route::get('files-and-directories', [FileSystemController::class, "index"]);
+Route::get('directories', [FileSystemController::class, "getDirectories"]);
+Route::get('files', [FileSystemController::class, "getFiles"]);
