@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\V1\FilesDirectoryController;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+Route::get('files-and-directories', [FilesDirectoryController::class, "index"]);
+Route::get('directories', [FilesDirectoryController::class, "getDirectories"]);
+Route::get('files', [FilesDirectoryController::class, "getFiles"]);
