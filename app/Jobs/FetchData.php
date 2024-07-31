@@ -1,71 +1,72 @@
 <?php
 
-namespace App\Http\Controllers\V1;
+namespace App\Jobs;
 
 use App\Models\File;
-use App\Jobs\FetchData;
 use App\Models\Directory;
-use App\Trait\JsonResponse;
-use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
-use App\Http\Resources\FilesResource;
-use Illuminate\Support\Facades\Config;
-use App\Http\Resources\DirectoryResource;
-use App\Http\Resources\FilesDirectoryResource;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 
-class FileSystemController extends Controller
+class FetchData implements ShouldQueue
 {
-    use JsonResponse;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $commonFileExtensions = [
         'txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'tar', 'gz', '7z', 'rar', 'db', 'dat', 'exe', 'enc', 'bat', 'so', 'ini', 'aspx',
         'mp3', 'wav', 'ogg', 'mp4', 'avi', 'mkv', 'mov', 'html', 'htm', 'css', 'js', 'json', 'xml', 'csv', 'sql', 'vir', 'run', 'dll', 'jar', 'sh', 'tmpl', 'yml', 'config',
         'pyd', 'cab', 'ico', 'py', 'lib', 'h', 'pdb', 'conf', 'dtd', 'rdb', 'cmd', 'cfg', 'idl', 'lock', 'log', 'p12', 'frm', 'ibd'
     ];
-    
-    public function getApiData()
+
+    /**
+     * Create a new job instance.
+     */
+    public function __construct()
     {
-        $directories = Cache::get('directories');
+        ini_set('memory_limit', '-1');
+        ini_set('max_execution_time', 300);
+    }
 
-        if(!$directories) {
-            FetchData::dispatch();
+    /**
+     * Execute the job.
+     */
+    public function handle(): void
+    {
+        Log::debug('Job started');
 
-            $directories = Directory::with('children', 'children.children', 'children.files', 'files')->get();
+        $url = 'https://rest-test-eight.vercel.app/api/test'; //Config::get('vercel_api_url');
 
-            Cache::put('directories', $directories, 60);
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+        ])->get($url);
+
+        $items = json_decode($response->body());
+
+        foreach($items->items as $item){
+            if(isset($item->fileUrl)){
+                $this->prepareUrl($item->fileUrl);
+            }
         }
-        
-        return response()->json([
-            'data' =>FilesDirectoryResource::collection($directories)
-        ]);
 
+        // Directory::with('children', 'children.children', 'children.files', 'files')
+        // ->chunk(500, function ($directories) {
+        //     Cache::put('directories', $directories, 60);
+        // });
 
-        // $url = 'https://rest-test-eight.vercel.app/api/test'; //Config::get('vercel_api_url');
-
-        // $response = Http::withHeaders([
-        //     'Content-Type' => 'application/json',
-        //     'Accept' => 'application/json',
-        // ])->get($url);
-
-        // $items = json_decode($response->body());
-
-        // foreach($items->items as $item){
-        //     if(isset($item->fileUrl)){
-        //         $this->prepareUrl($item->fileUrl);
-        //     }
-        // }
-        
-        // $directories = Directory::with('children', 'children.children', 'children.files', 'files')->get();
-
-        // return response()->json([
-        //     'data' =>FilesDirectoryResource::collection($directories)
-        // ]);
+        Log::debug('Job finished');
     }
 
     public function prepareUrl($url)
     {
-        ini_set('max_execution_time', 300);
+        Log::debug('Preparing data');
+        
         $parsedUrl = parse_url($url);
         $path = $parsedUrl['path'];
         $segments = explode('/', trim($path, '/'));
@@ -109,19 +110,5 @@ class FileSystemController extends Controller
         $extension = $pathInfo['extension'] ?? '';
 
         return in_array($extension, $this->commonFileExtensions);
-    }
-
-    public function getDirectories()
-    {
-        $directories = Directory::paginate(100);
-
-        return $this->paginatedResponse($directories, DirectoryResource::class);
-    }
-
-    public function getFiles()
-    {
-        $files = File::paginate(100);
-
-        return $this->paginatedResponse($files, FilesResource::class);
     }
 }
