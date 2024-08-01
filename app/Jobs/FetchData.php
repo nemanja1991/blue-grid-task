@@ -2,8 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Helpers\Helper;
 use App\Models\File;
+use App\Models\ApiLog;
 use App\Models\Directory;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -49,16 +52,20 @@ class FetchData implements ShouldQueue
 
         $items = json_decode($response->body());
 
-        foreach($items->items as $item){
-            if(isset($item->fileUrl)){
-                $this->prepareUrl($item->fileUrl);
-            }
-        }
+        Helper::apiLog('GET', $url, true);
 
-        // Directory::with('children', 'children.children', 'children.files', 'files')
-        // ->chunk(500, function ($directories) {
-        //     Cache::put('directories', $directories, 60);
-        // });
+        $items->chunk(500)->each(function (Collection $chunk) {
+            $chunk->each(function ($item) {
+                if(isset($item->fileUrl)){
+                    $this->prepareUrl($item->fileUrl);
+                }
+            });
+        });
+
+        Directory::with('children', 'children.children', 'children.files', 'files')
+        ->chunk(500, function ($directories) {
+            Cache::put('directories', $directories, 60);
+        });
 
         Log::debug('Job finished');
     }
@@ -93,13 +100,9 @@ class FetchData implements ShouldQueue
 
         if(!empty($fileName) && $currentParentId)
         {
-
-            $encoding = mb_detect_encoding($fileName, 'UTF-8, ISO-8859-1, ASCII', true);
-            $convertedText = mb_convert_encoding($fileName, 'UTF-8', $encoding);
-
             File::create([
                 'directory_id' => $currentParentId,
-                'file_name' => $convertedText
+                'file_name' => $fileName
             ]);
         }
     }

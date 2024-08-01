@@ -26,41 +26,49 @@ class FileSystemController extends Controller
     
     public function getApiData()
     {
-        $directories = Cache::get('directories');
+        // $directories = Cache::get('directories');
 
-        if(!$directories) {
-            FetchData::dispatch();
+        // if(!$directories) {
+        //     FetchData::dispatch();
 
-            $directories = Directory::with('children', 'children.children', 'children.files', 'files')->get();
+        //     $directories = Directory::with('children', 'children.children', 'children.files', 'files')->get();
 
-            Cache::put('directories', $directories, 60);
-        }
-        
-        return response()->json([
-            'data' =>FilesDirectoryResource::collection($directories)
-        ]);
-
-
-        // $url = 'https://rest-test-eight.vercel.app/api/test'; //Config::get('vercel_api_url');
-
-        // $response = Http::withHeaders([
-        //     'Content-Type' => 'application/json',
-        //     'Accept' => 'application/json',
-        // ])->get($url);
-
-        // $items = json_decode($response->body());
-
-        // foreach($items->items as $item){
-        //     if(isset($item->fileUrl)){
-        //         $this->prepareUrl($item->fileUrl);
-        //     }
+        //     Cache::put('directories', $directories, 60);
         // }
         
-        // $directories = Directory::with('children', 'children.children', 'children.files', 'files')->get();
-
         // return response()->json([
         //     'data' =>FilesDirectoryResource::collection($directories)
         // ]);
+
+        $directories = Cache::get('directories');
+
+        if(!$directories) {
+            $url = 'https://rest-test-eight.vercel.app/api/test'; //Config::get('vercel_api_url');
+
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ])->get($url);
+    
+            $items = json_decode($response->body());
+    
+            foreach($items->items as $item){
+                if(isset($item->fileUrl)){
+                    $this->prepareUrl($item->fileUrl);
+                }
+            }
+            
+            Directory::with('children', 'children.children', 'children.files', 'files')
+            ->chunk(50, function ($directories) {
+                Cache::forever('directories', $directories);
+            });
+        }
+       
+        $directories = Directory::with('children', 'children.children', 'children.files', 'files')->get();
+
+        return response()->json([
+            'data' =>FilesDirectoryResource::collection($directories)
+        ]);
     }
 
     public function prepareUrl($url)
